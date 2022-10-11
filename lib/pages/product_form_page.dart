@@ -22,6 +22,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _formKey  = GlobalKey<FormState>();
   final _formData = <String,Object>{};
 
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,7 +75,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
   }
 
 
-  void _submitForm(){
+  Future<void> _submitForm() async {
     final isValid = _formKey.currentState?.validate() ?? false;
 
     if(!isValid){
@@ -82,12 +84,34 @@ class _ProductFormPageState extends State<ProductFormPage> {
 
     _formKey.currentState?.save();
 
-    Provider.of<ProductList>(
-        context,
-        listen: false
-        ).saveProduct(_formData);
+    setState(() {
+      _isLoading = true;
+    });
 
+    try{
+      await Provider.of<ProductList>(
+      context,
+      listen: false
+      ).saveProduct(_formData);
+    }catch(error){
+      await showDialog<void>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: Text('Ocorreu um erro'),
+              content: Text('Ocorreu um erro ao salvar o produto'),
+              actions: [
+                  TextButton(
+                    child: Text('Ok'),
+                    onPressed: () => Navigator.of(context).pop(),
+                    ),
+              ],
+            ));
+    }finally{
+      setState(() {
+      _isLoading = false;
+    });
       Navigator.of(context).pop();
+    }
   }
   
 
@@ -102,7 +126,9 @@ class _ProductFormPageState extends State<ProductFormPage> {
              icon: const Icon(Icons.save)),
         ],
       ),
-      body: Padding(
+      body: _isLoading ? Center(
+        child: CircularProgressIndicator(),)
+        : Padding(
         padding: const EdgeInsets.all(15),
         child: Form(
           key: _formKey,
@@ -205,10 +231,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     alignment: Alignment.center,
                     child: _imageUrlController.text.isEmpty 
                     ? Text('Informe a Url') 
-                    : FittedBox(
-                      child: Image.network(_imageUrlController.text),
-                      fit: BoxFit.cover,
-                    ),
+                    : Image.network(_imageUrlController.text),
                   ),
                 ],
               ),
